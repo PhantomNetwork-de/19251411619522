@@ -9,38 +9,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { key, hwid } = req.body;
+  const { key } = req.body;
 
-  if (!key || !hwid) {
+  if (!key) {
     return res.json({ valid: false });
   }
 
-  const { rows } = await pool.query(
-    "SELECT * FROM keys WHERE key = $1",
-    [key]
-  );
-
-  if (!rows.length) {
-    return res.json({ valid: false });
-  }
-
-  const row = rows[0];
-
-  if (new Date(row.expires_at) < new Date()) {
-    return res.json({ valid: false });
-  }
-
-  if (!row.hwid) {
-    await pool.query(
-      "UPDATE keys SET hwid = $1 WHERE key = $2",
-      [hwid, key]
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM keys WHERE key = $1",
+      [key]
     );
+
+    if (rows.length === 0) {
+      return res.json({ valid: false });
+    }
+
     return res.json({ valid: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ valid: false, error: "Server error" });
   }
-
-  if (row.hwid !== hwid) {
-    return res.json({ valid: false });
-  }
-
-  return res.json({ valid: true });
 }
